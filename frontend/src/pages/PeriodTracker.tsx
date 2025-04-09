@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+// import axios from 'axios'; // Remove direct axios import
+import api from '../services/api'; // Import configured api instance
 import { format, addDays, differenceInDays, parseISO } from 'date-fns';
 
 // Helper function to handle date timezone issues
@@ -60,7 +61,8 @@ const PeriodTracker = () => {
   const fetchCycles = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get('http://localhost:3000/api/cycles');
+      // Use 'api' and relative path
+      const response = await api.get('/cycles'); 
       const sortedCycles = response.data.cycles.sort((a: CycleEntry, b: CycleEntry) => 
         new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
       );
@@ -101,7 +103,8 @@ const PeriodTracker = () => {
           startDate: formatDateForAPI(newEntry.startDate),
           endDate: formatDateForAPI(newEntry.endDate),
         };
-        await axios.post('http://localhost:3000/api/cycles', cycleData);
+        // Use 'api' and relative path
+        await api.post('/cycles', cycleData);
         resetForm();
         fetchCycles();
       }
@@ -112,7 +115,8 @@ const PeriodTracker = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`http://localhost:3000/api/cycles/${id}`);
+      // Use 'api' and relative path
+      await api.delete(`/cycles/${id}`);
       fetchCycles();
     } catch (err) {
       setError('Error deleting cycle entry');
@@ -142,7 +146,8 @@ const PeriodTracker = () => {
         startDate: formatDateForAPI(newEntry.startDate),
         endDate: formatDateForAPI(newEntry.endDate),
       };
-      const response = await axios.put(`http://localhost:3000/api/cycles/${editingCycle._id}`, cycleData);
+      // Use 'api' and relative path
+      const response = await api.put(`/cycles/${editingCycle._id}`, cycleData);
       const { cycle, stats: updatedStats } = response.data;
       setCycles(prevCycles => {
         const updatedCycles = prevCycles.map(c => c._id === cycle._id ? cycle : c);
@@ -228,18 +233,32 @@ const PeriodTracker = () => {
           <div className="card bg-white w-auto px-6">
             <h3 className="text-xl font-semibold mb-2 text-primary-dark text-center">Next Predicted Period</h3>
             <p className="text-3xl text-primary text-center">
-              {format(new Date(stats.nextPredictedDate), 'MMMM d, yyyy')}
+              {stats.totalCycles > 0 
+                ? format(new Date(stats.nextPredictedDate), 'MMMM d, yyyy')
+                : 'N/A'}
             </p>
-            <p className="text-sm text-gray-500 mt-2 text-center">Based on your cycle history</p>
+            <p className="text-sm text-gray-500 mt-2 text-center">
+              {stats.totalCycles > 0 
+                ? 'Based on your cycle history' 
+                : 'Log cycles for predictions'}
+            </p>
           </div>
           <div className="card bg-white w-auto px-6">
             <h3 className="text-xl font-semibold mb-2 text-primary-dark text-center">Average Cycle Length</h3>
-            <p className="text-3xl text-primary text-center">{stats.averageCycleLength} days</p>
-            <p className="text-sm text-gray-500 mt-2 text-center">Based on {stats.totalCycles} cycles</p>
+            <p className="text-3xl text-primary text-center">
+              {stats.totalCycles > 0 ? `${stats.averageCycleLength} days` : 'N/A'}
+            </p>
+            <p className="text-sm text-gray-500 mt-2 text-center">
+              {stats.totalCycles > 0 
+                ? `Based on ${stats.totalCycles} cycles`
+                : 'N/A'}
+            </p>
           </div>
           <div className="card bg-white w-auto px-6">
             <h3 className="text-xl font-semibold mb-2 text-primary-dark text-center">Average Period Length</h3>
-            <p className="text-3xl text-primary text-center">{stats.averagePeriodLength} days</p>
+            <p className="text-3xl text-primary text-center">
+              {stats.totalCycles > 0 ? `${stats.averagePeriodLength} days` : 'N/A'}
+            </p>
           </div>
         </div>
       )}

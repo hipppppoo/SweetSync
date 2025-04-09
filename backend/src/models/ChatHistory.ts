@@ -1,6 +1,18 @@
-import mongoose from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
-const messageSchema = new mongoose.Schema({
+interface IMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp?: Date;
+}
+
+export interface IChatHistory extends Document {
+  title: string;
+  messages: IMessage[];
+  userId: mongoose.Schema.Types.ObjectId;
+}
+
+const MessageSchema: Schema = new Schema({
   role: {
     type: String,
     enum: ['user', 'assistant'],
@@ -16,24 +28,25 @@ const messageSchema = new mongoose.Schema({
   },
 });
 
-const chatHistorySchema = new mongoose.Schema({
+const ChatHistorySchema: Schema = new Schema(
+  {
   title: {
     type: String,
     required: true,
+      trim: true,
+      default: 'New Chat',
   },
-  messages: [messageSchema],
-  createdAt: {
-    type: Date,
-    default: Date.now,
+    messages: {
+      type: [MessageSchema],
+      default: [],
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: 'User'
+    }
   },
-}, {
-  timestamps: true,
-});
+  { timestamps: true } 
+);
 
-const ChatHistory = mongoose.model('ChatHistory', chatHistorySchema);
-
-export default ChatHistory; 
+export default mongoose.model<IChatHistory>('ChatHistory', ChatHistorySchema); 

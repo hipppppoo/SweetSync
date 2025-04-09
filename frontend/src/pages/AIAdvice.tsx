@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
+// import axios from 'axios'; // Remove direct axios import
+import api from '../services/api'; // Import configured api instance
 
 interface Message {
   role: 'user' | 'assistant';
@@ -41,7 +42,8 @@ const AIAdvice: React.FC = () => {
 
   const fetchChatHistories = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/chat-history');
+      // Use 'api' and relative path
+      const response = await api.get('/chat-history');
       setChatHistories(response.data);
     } catch (error) {
       console.error('Error fetching chat histories:', error);
@@ -50,7 +52,8 @@ const AIAdvice: React.FC = () => {
 
   const loadChatHistory = async (chatId: string) => {
     try {
-      const response = await axios.get(`http://localhost:3000/api/chat-history/${chatId}`);
+      // Use 'api' and relative path
+      const response = await api.get(`/chat-history/${chatId}`);
       setMessages(response.data.messages);
       setSelectedChat(chatId);
     } catch (error) {
@@ -66,7 +69,8 @@ const AIAdvice: React.FC = () => {
     }
 
     try {
-      const response = await axios.post('http://localhost:3000/api/chat-history', {
+      // Use 'api' and relative path
+      const response = await api.post('/chat-history', {
         title: chatTitle,
         messages,
       });
@@ -84,7 +88,8 @@ const AIAdvice: React.FC = () => {
     if (!selectedChat) return;
 
     try {
-      await axios.put(`http://localhost:3000/api/chat-history/${selectedChat}`, {
+      // Use 'api' and relative path
+      await api.put(`/chat-history/${selectedChat}`, {
         messages,
       });
     } catch (error) {
@@ -95,7 +100,8 @@ const AIAdvice: React.FC = () => {
 
   const deleteChat = async (chatId: string) => {
     try {
-      await axios.delete(`http://localhost:3000/api/chat-history/${chatId}`);
+      // Use 'api' and relative path
+      await api.delete(`/chat-history/${chatId}`);
       setChatHistories(chatHistories.filter(chat => chat._id !== chatId));
       if (selectedChat === chatId) {
         setSelectedChat(null);
@@ -125,7 +131,8 @@ const AIAdvice: React.FC = () => {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:3000/api/ai-advice', {
+      // Use 'api' and relative path
+      const response = await api.post('/ai-advice', {
         message: messageContent,
       });
 
@@ -202,7 +209,7 @@ const AIAdvice: React.FC = () => {
           <h1 className="text-3xl font-bold mb-8 text-primary-dark">AI Relationship Advice</h1>
           
           {/* Messages Container */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6 h-[900px] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6 h-[700px] overflow-y-auto">
             {messages.length === 0 ? (
               <div className="text-center text-gray-500">
                 <p className="mb-4">Welcome to your AI Relationship Advisor!</p>

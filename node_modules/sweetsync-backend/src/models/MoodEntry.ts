@@ -1,6 +1,19 @@
-import mongoose from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
-const moodEntrySchema = new mongoose.Schema({
+export interface IMoodEntry extends Document {
+  date: Date;
+  energy?: number;
+  stressLevel?: number;
+  physicalHealth?: number;
+  notes?: string;
+  sleepHours?: number;
+  sleepQuality?: number;
+  happinessLevel?: number;
+  activities?: string[];
+  userId: mongoose.Schema.Types.ObjectId;
+}
+
+const moodEntrySchema: Schema = new Schema({
   date: {
     type: Date,
     required: true,
@@ -49,6 +62,11 @@ const moodEntrySchema = new mongoose.Schema({
     max: 10,
     default: 5,
   },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    ref: 'User'
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -57,13 +75,13 @@ const moodEntrySchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-});
+}, { timestamps: true });
 
 moodEntrySchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
 });
 
-const MoodEntry = mongoose.model('MoodEntry', moodEntrySchema);
+const MoodEntry = mongoose.model<IMoodEntry>('MoodEntry', moodEntrySchema);
 
 export default MoodEntry; 

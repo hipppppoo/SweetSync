@@ -1,22 +1,52 @@
-import mongoose from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
-const anniversarySchema = new mongoose.Schema({
+export interface IAnniversary extends Document {
+  title: string;
+  date: Date;
+  time: string;
+  description?: string;
+  type: 'anniversary' | 'birthday' | 'other';
+  monthlyReminder?: boolean;
+  monthlyReminderDay?: number;
+  reminderEnabled: boolean;
+  reminderDays: number;
+  userId: mongoose.Schema.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const anniversarySchema: Schema = new mongoose.Schema({
   title: {
     type: String,
     required: true,
+    trim: true
   },
   date: {
     type: Date,
-    required: true,
+    required: true
   },
-  type: {
+  time: {
     type: String,
-    enum: ['relationship', 'birthday', 'wedding', 'first_date', 'other'],
-    default: 'other',
+    required: true
   },
   description: {
     type: String,
-    default: '',
+    trim: true
+  },
+  type: {
+    type: String,
+    required: true,
+    enum: ['anniversary', 'birthday', 'other'],
+    default: 'anniversary'
+  },
+  monthlyReminder: {
+    type: Boolean,
+    default: false
+  },
+  monthlyReminderDay: {
+    type: Number,
+    min: 1,
+    max: 31
   },
   reminderEnabled: {
     type: Boolean,
@@ -26,33 +56,21 @@ const anniversarySchema = new mongoose.Schema({
     type: Number,
     default: 7,
   },
-  monthlyReminder: {
-    type: Boolean,
-    default: false,
-  },
-  monthlyReminderDay: {
-    type: Number,
-    default: null,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    ref: 'User'
+  }
+}, { timestamps: true });
 
-anniversarySchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  if (this.monthlyReminder && !this.monthlyReminderDay) {
+anniversarySchema.pre<IAnniversary>('save', function(next) {
+  if (this.isModified('monthlyReminder') && this.monthlyReminder && !this.monthlyReminderDay) {
     const date = new Date(this.date);
     this.monthlyReminderDay = date.getDate();
   }
   next();
 });
 
-const Anniversary = mongoose.model('Anniversary', anniversarySchema);
+const Anniversary = mongoose.model<IAnniversary>('Anniversary', anniversarySchema);
 
 export default Anniversary; 

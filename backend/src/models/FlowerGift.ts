@@ -1,25 +1,42 @@
-import mongoose from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
-const flowerSchema = new mongoose.Schema({
+export interface IFlowerGift extends Document {
+  flowerType: string;
+  date: Date;
+  occasion?: string;
+  notes?: string;
+  reaction?: string;
+  price?: number;
+  estimatedExpiryDate?: Date;
+  userId: mongoose.Schema.Types.ObjectId;
+}
+
+const flowerSchema = new Schema({
   flowerType: {
     type: String,
     required: true,
+    trim: true,
   },
   date: {
     type: Date,
     required: true,
+    default: Date.now,
   },
-  reaction: {
+  occasion: {
     type: String,
-    default: '',
+    trim: true,
   },
   notes: {
     type: String,
-    default: '',
+    trim: true,
+  },
+  reaction: {
+    type: String,
+    trim: true,
   },
   price: {
     type: Number,
-    default: 0,
+    min: 0,
   },
   source: {
     type: String,
@@ -27,7 +44,11 @@ const flowerSchema = new mongoose.Schema({
   },
   estimatedExpiryDate: {
     type: Date,
-    required: false,
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    ref: 'User'
   },
   createdAt: {
     type: Date,
@@ -37,13 +58,13 @@ const flowerSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-});
+}, { timestamps: true });
 
 flowerSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
 });
 
-const FlowerGift = mongoose.model('FlowerGift', flowerSchema);
+const FlowerGift = mongoose.model<IFlowerGift>('FlowerGift', flowerSchema);
 
 export default FlowerGift; 

@@ -2,6 +2,7 @@ import express, { Request, Response, Router } from 'express';
 import axios from 'axios';
 import dotenv from 'dotenv';
 import FlowerGift from '../models/FlowerGift';
+import { protect } from '../middleware/authMiddleware';
 
 // Ensure environment variables are loaded
 dotenv.config();
@@ -12,22 +13,34 @@ const router: Router = express.Router();
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-// Get all flower gifts
+// Get all flower gifts for the user
 const getAllFlowerGifts = async (req: Request, res: Response): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ message: 'User not authenticated' });
+    return;
+  }
   try {
-    const flowerGifts = await FlowerGift.find().sort({ date: -1 });
+    const flowerGifts = await FlowerGift.find({ userId: req.user._id }).sort({ date: -1 });
     res.json(flowerGifts);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching flower gifts', error });
   }
 };
 
-// Get a single flower gift
+// Get a single flower gift (checking ownership)
 const getFlowerGift = async (req: Request, res: Response): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ message: 'User not authenticated' });
+    return;
+  }
   try {
     const flowerGift = await FlowerGift.findById(req.params.id);
     if (!flowerGift) {
       res.status(404).json({ message: 'Flower gift not found' });
+      return;
+    }
+    if (flowerGift.userId.toString() !== req.user._id.toString()) {
+      res.status(403).json({ message: 'User not authorized' });
       return;
     }
     res.json(flowerGift);
@@ -36,10 +49,17 @@ const getFlowerGift = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Create a new flower gift
+// Create a new flower gift for the user
 const createFlowerGift = async (req: Request, res: Response): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ message: 'User not authenticated' });
+    return;
+  }
   try {
-    const flowerGift = new FlowerGift(req.body);
+    const flowerGift = new FlowerGift({ 
+        ...req.body, 
+        userId: req.user._id 
+    });
     const savedFlowerGift = await flowerGift.save();
     res.status(201).json(savedFlowerGift);
   } catch (error) {
@@ -47,42 +67,69 @@ const createFlowerGift = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Update a flower gift
+// Update a flower gift (checking ownership)
 const updateFlowerGift = async (req: Request, res: Response): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ message: 'User not authenticated' });
+    return;
+  }
   try {
-    const flowerGift = await FlowerGift.findByIdAndUpdate(
+    const flowerToUpdate = await FlowerGift.findById(req.params.id);
+    if (!flowerToUpdate) {
+        res.status(404).json({ message: 'Flower gift not found' });
+        return;
+    }
+    if (flowerToUpdate.userId.toString() !== req.user._id.toString()) {
+        res.status(403).json({ message: 'User not authorized' });
+        return;
+    }
+
+    const updatedFlowerGift = await FlowerGift.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true }
     );
-    if (!flowerGift) {
-      res.status(404).json({ message: 'Flower gift not found' });
-      return;
-    }
-    res.json(flowerGift);
+    res.json(updatedFlowerGift);
   } catch (error) {
     res.status(400).json({ message: 'Error updating flower gift', error });
   }
 };
 
-// Delete a flower gift
+// Delete a flower gift (checking ownership)
 const deleteFlowerGift = async (req: Request, res: Response): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ message: 'User not authenticated' });
+    return;
+  }
   try {
-    const flowerGift = await FlowerGift.findByIdAndDelete(req.params.id);
-    if (!flowerGift) {
+    const flowerToDelete = await FlowerGift.findById(req.params.id);
+    if (!flowerToDelete) {
       res.status(404).json({ message: 'Flower gift not found' });
       return;
     }
+    if (flowerToDelete.userId.toString() !== req.user._id.toString()) {
+        res.status(403).json({ message: 'User not authorized' });
+        return;
+    }
+
+    await FlowerGift.findByIdAndDelete(req.params.id);
     res.json({ message: 'Flower gift deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting flower gift', error });
   }
 };
 
-// Get flower statistics
+// Get flower statistics for the user
 const getFlowerStats = async (req: Request, res: Response): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ message: 'User not authenticated' });
+    return;
+  }
   try {
     const stats = await FlowerGift.aggregate([
+      {
+        $match: { userId: req.user._id } // Filter by user
+      },
       {
         $group: {
           _id: null,
@@ -119,10 +166,14 @@ const getFlowerStats = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Estimate flower expiry date
-router.post('/estimate-expiry', async (req: Request, res: Response): Promise<void> => {
+// Estimate flower expiry date (No user context needed, but requires login)
+router.post('/estimate-expiry', protect, async (req: Request, res: Response): Promise<void> => {
+  if (!req.user) { // Redundant check as protect middleware already handles this, but good practice
+    res.status(401).json({ message: 'User not authenticated' }); 
+    return;
+  }
   try {
-    const { flowerType, purchaseDate } = req.body;
+    const { flowerType } = req.body;
 
     if (!GROQ_API_KEY) {
       console.error('Groq API key not found');
@@ -166,11 +217,12 @@ router.post('/estimate-expiry', async (req: Request, res: Response): Promise<voi
   }
 });
 
-router.get('/', getAllFlowerGifts);
-router.get('/stats', getFlowerStats);
-router.get('/:id', getFlowerGift);
-router.post('/', createFlowerGift);
-router.put('/:id', updateFlowerGift);
-router.delete('/:id', deleteFlowerGift);
+// --- Routes --- (Middleware already applied)
+router.get('/', protect, getAllFlowerGifts);
+router.get('/stats', protect, getFlowerStats);
+router.get('/:id', protect, getFlowerGift);
+router.post('/', protect, createFlowerGift);
+router.put('/:id', protect, updateFlowerGift);
+router.delete('/:id', protect, deleteFlowerGift);
 
 export default router; 

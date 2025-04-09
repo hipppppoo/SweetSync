@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { format, parseISO, addDays } from 'date-fns';
 
 interface SharedGoal {
@@ -64,11 +64,11 @@ const SharedGoals: React.FC = () => {
 
   const fetchGoals = async () => {
     try {
-      let url = 'http://localhost:3000/api/shared-goals';
+      let url = '/shared-goals';
       if (selectedStatus !== 'all') {
-        url = `http://localhost:3000/api/shared-goals/status/${selectedStatus}`;
+        url = `/shared-goals/status/${selectedStatus}`;
       }
-      const response = await axios.get(url);
+      const response = await api.get(url);
       setGoals(response.data);
       setError('');
     } catch (err) {
@@ -79,7 +79,7 @@ const SharedGoals: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/shared-goals/stats');
+      const response = await api.get('/shared-goals/stats');
       setStats(response.data);
       setError('');
     } catch (err) {
@@ -112,7 +112,7 @@ const SharedGoals: React.FC = () => {
     if (!editingGoal) return;
 
     try {
-      await axios.put(`http://localhost:3000/api/shared-goals/${editingGoal._id}`, newGoal);
+      await api.put(`/shared-goals/${editingGoal._id}`, newGoal);
       setEditingGoal(null);
       setNewGoal({
         title: '',
@@ -139,7 +139,7 @@ const SharedGoals: React.FC = () => {
       if (editingGoal) {
         await handleUpdate(e);
       } else {
-        await axios.post('http://localhost:3000/api/shared-goals', newGoal);
+        await api.post('/shared-goals', newGoal);
         setNewGoal({
           title: '',
           description: '',
@@ -162,7 +162,7 @@ const SharedGoals: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`http://localhost:3000/api/shared-goals/${id}`);
+      await api.delete(`/shared-goals/${id}`);
       setError('');
       await fetchGoals();
       await fetchStats();
@@ -186,7 +186,7 @@ const SharedGoals: React.FC = () => {
         newStatus = 'in_progress';
       }
 
-      await axios.put(`http://localhost:3000/api/shared-goals/${id}`, {
+      await api.put(`/shared-goals/${id}`, {
         progress,
         status: newStatus
       });

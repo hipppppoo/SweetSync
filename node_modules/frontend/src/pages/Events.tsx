@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+// import axios from 'axios'; // Remove direct axios import
+import api from '../services/api'; // Import configured api instance
 import { format, parseISO, addDays, addYears, isBefore, differenceInYears, differenceInMonths, differenceInMilliseconds, startOfYear, isSameDay, differenceInCalendarDays } from 'date-fns';
 
 // Helper function to format UTC date string using its embedded YYYY-MM-DD (Restored Logic)
@@ -161,7 +162,8 @@ const Events: React.FC = () => {
 
   const fetchEvents = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/seasonal-events');
+      // Use 'api' and relative path
+      const response = await api.get('/seasonal-events');
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -171,21 +173,25 @@ const Events: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/seasonal-events/stats');
+      // Use 'api' and relative path
+      const response = await api.get('/seasonal-events/stats');
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
+      // Maybe set specific error state for stats?
     }
   };
 
   const fetchReminders = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/seasonal-events/reminders');
+      // Use 'api' and relative path
+      const response = await api.get('/seasonal-events/reminders');
       console.log('Fetched reminders:', response.data);
-      console.log('Current events:', events);
+      console.log('Current events:', events); // Keep this log if useful
       setReminders(response.data);
     } catch (error) {
       console.error('Error fetching reminders:', error);
+      // Maybe set specific error state for reminders?
     }
   };
 
@@ -222,7 +228,8 @@ const Events: React.FC = () => {
         date: dateToSend,
       };
 
-      await axios.put(`http://localhost:3000/api/seasonal-events/${editingEvent._id}`, payload);
+      // Use 'api' and relative path
+      await api.put(`/seasonal-events/${editingEvent._id}`, payload);
       setEditingEvent(null);
       setIsAddingNew(false);
       // Reset form
@@ -259,7 +266,8 @@ const Events: React.FC = () => {
           date: dateToSend,
         };
 
-        await axios.post('http://localhost:3000/api/seasonal-events', payload);
+        // Use 'api' and relative path
+        await api.post('/seasonal-events', payload);
         setIsAddingNew(false);
         // Reset form
         setNewEvent({
@@ -276,14 +284,15 @@ const Events: React.FC = () => {
         await fetchReminders();
       }
     } catch (error) {
-      console.error('Error creating/updating event:', error);
-      setError('Failed to create/update event');
+      console.error('Error creating event:', error);
+      setError('Failed to create event');
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`http://localhost:3000/api/seasonal-events/${id}`);
+      // Use 'api' and relative path
+      await api.delete(`/seasonal-events/${id}`);
       await fetchEvents();
       await fetchStats();
       await fetchReminders();

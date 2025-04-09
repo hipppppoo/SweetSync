@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+// import axios from "axios"; // Remove direct axios import
+import api from "../services/api"; // Import configured api instance
 import { format, parseISO, addDays, differenceInDays, differenceInHours, differenceInMinutes, differenceInSeconds, differenceInMonths, differenceInYears, addYears, addMonths, isBefore, differenceInMilliseconds, differenceInCalendarDays } from "date-fns";
 
 interface Anniversary {
@@ -181,7 +182,8 @@ const Anniversaries = () => {
 
   const fetchAnniversaries = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/anniversaries');
+      // Use 'api' and relative path
+      const response = await api.get('/anniversaries');
       setAnniversaries(response.data);
     } catch (err) {
       setError('Error fetching anniversaries');
@@ -190,7 +192,8 @@ const Anniversaries = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/anniversaries/stats');
+      // Use 'api' and relative path
+      const response = await api.get('/anniversaries/stats');
       setStats(response.data);
     } catch (err) {
       // Error fetching stats, ignore for now or add user-facing error handling
@@ -223,7 +226,8 @@ const Anniversaries = () => {
       const [hours, minutes] = newAnniversary.time.split(':').map(Number);
       const date = new Date(year, month - 1, day, hours, minutes);
       
-      await axios.put(`http://localhost:3000/api/anniversaries/${editingAnniversary._id}`, {
+      // Use 'api' and relative path
+      await api.put(`/anniversaries/${editingAnniversary._id}`, {
         ...newAnniversary,
         date: date.toISOString(),
       });
@@ -248,39 +252,42 @@ const Anniversaries = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const [year, month, day] = newAnniversary.date.split('-').map(Number);
+      const [hours, minutes] = newAnniversary.time.split(':').map(Number);
+      const date = new Date(year, month - 1, day, hours, minutes);
+
       if (editingAnniversary) {
-        await handleUpdate(e);
+        await handleUpdate(e); // handleUpdate already uses 'api'
       } else {
-        const [year, month, day] = newAnniversary.date.split('-').map(Number);
-        const [hours, minutes] = newAnniversary.time.split(':').map(Number);
-        const date = new Date(year, month - 1, day, hours, minutes);
-        
-        await axios.post('http://localhost:3000/api/anniversaries', {
+        // Use 'api' and relative path
+        await api.post('/anniversaries', {
           ...newAnniversary,
           date: date.toISOString(),
         });
-        
-        setNewAnniversary({
-          title: '',
-          date: '',
-          time: '00:00',
-          description: '',
-          reminderEnabled: true,
-          reminderDays: 7,
-          monthlyReminder: false,
-        });
-        setIsAddingNew(false);
-        fetchAnniversaries();
       }
+      
+      setNewAnniversary({
+        title: '',
+        date: '',
+        time: '00:00',
+        description: '',
+        reminderEnabled: true,
+        reminderDays: 7,
+        monthlyReminder: false,
+      });
+      setIsAddingNew(false);
+      fetchAnniversaries();
     } catch (err) {
-      setError('Error adding anniversary');
+      setError('Error saving anniversary');
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`http://localhost:3000/api/anniversaries/${id}`);
+      // Use 'api' and relative path
+      await api.delete(`/anniversaries/${id}`);
       fetchAnniversaries();
+      fetchStats(); // Fetch stats again after delete
     } catch (err) {
       setError('Error deleting anniversary');
     }

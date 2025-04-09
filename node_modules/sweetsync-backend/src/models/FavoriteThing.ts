@@ -1,47 +1,61 @@
-import mongoose from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
-const favoriteThingSchema = new mongoose.Schema({
+export interface IFavoriteThing extends Document {
+  name: string;
+  category: string;
+  description?: string;
+  rating?: number;
+  dateAdded: Date;
+  isShared?: boolean;
+  tags?: string[];
+  userId: mongoose.Schema.Types.ObjectId;
+}
+
+const FavoriteThingSchema: Schema = new Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+  },
   category: {
     type: String,
     required: true,
-  },
-  title: {
-    type: String,
-    required: true,
+    trim: true,
   },
   description: {
     type: String,
-    default: '',
+    trim: true,
   },
   rating: {
     type: Number,
     min: 1,
-    max: 10,
-    default: 5,
+    max: 5,
   },
   dateAdded: {
     type: Date,
+    required: true,
     default: Date.now,
   },
   isShared: {
     type: Boolean,
-    default: true,
+    default: false,
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
+  tags: {
+    type: [String],
+    default: [],
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    ref: 'User'
+  }
+}, { timestamps: true });
 
-favoriteThingSchema.pre('save', function(next) {
+FavoriteThingSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
 });
 
-const FavoriteThing = mongoose.model('FavoriteThing', favoriteThingSchema);
+const FavoriteThing = mongoose.model<IFavoriteThing>('FavoriteThing', FavoriteThingSchema);
 
 export default FavoriteThing; 

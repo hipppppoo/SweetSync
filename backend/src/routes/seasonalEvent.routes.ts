@@ -1,6 +1,7 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import SeasonalEvent from '../models/SeasonalEvent';
 import { addDays, addYears, isBefore, setYear, parseISO, differenceInCalendarDays } from 'date-fns';
+import { protect } from '../middleware/authMiddleware'; // Import protect middleware
 
 const router = express.Router();
 
@@ -43,57 +44,36 @@ const getNextOccurrence = (eventDateISO: string, isRecurring: boolean): Date => 
   return nextOccurrence;
 };
 
-// Get all events
-router.get('/', async (req, res) => {
+// Get all events for the user
+router.get('/', protect, async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    // Sort by type (ascending), then by date (ascending)
-    const events = await SeasonalEvent.find().sort({ type: 1, date: 1 });
+    const events = await SeasonalEvent.find({ userId: req.user._id }).sort({ type: 1, date: 1 });
     res.json(events);
   } catch (error: any) {
     res.status(500).json({ message: 'Error fetching events', error: error.toString() });
   }
 });
 
-// Get upcoming reminders
-router.get('/reminders', async (req, res) => {
+// Get upcoming reminders for the user
+router.get('/reminders', protect, async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const events = await SeasonalEvent.find();
+    const events = await SeasonalEvent.find({ userId: req.user._id });
     const now = new Date();
     now.setUTCHours(12, 0, 0, 0);  // Use UTC noon for today
-    console.log('Current time (UTC noon):', now.toISOString());
 
     const reminders = events.map(event => {
-      console.log('\nProcessing event:', event.title);
       const nextOccurrence = getNextOccurrence(event.date.toISOString(), event.isRecurring);
-      console.log('Next occurrence calculated:', nextOccurrence.toISOString());
       let reminderDate = addDays(nextOccurrence, -event.reminderDays);
-      console.log('Initial reminder date:', reminderDate.toISOString());
-
       let daysUntilReminder = differenceInCalendarDays(reminderDate, now);
-
-      // Calculate days until the actual event date (always based on immediate next occurrence)
       const daysUntilEvent = differenceInCalendarDays(nextOccurrence, now);
 
       if (event.isRecurring && daysUntilReminder < 0) {
-        console.log('Reminder date is in the past for recurring event. Recalculating reminder for next year.');
         const nextYearOccurrence = new Date(Date.UTC(nextOccurrence.getUTCFullYear() + 1, nextOccurrence.getUTCMonth(), nextOccurrence.getUTCDate(), 12, 0, 0));
         reminderDate = addDays(nextYearOccurrence, -event.reminderDays);
-        
-        // Recalculate ONLY the reminder days based on the next year's occurrence
         daysUntilReminder = differenceInCalendarDays(reminderDate, now);
-        // DO NOT recalculate daysUntilEvent here
-
-        console.log('Recalculated reminder for next year:', { 
-            nextYearOccurrence: nextYearOccurrence.toISOString(), 
-            reminderDate: reminderDate.toISOString(), 
-            daysUntilReminder, 
-            daysUntilEvent 
-        });
       }
-
-      console.log('Final reminder date:', reminderDate.toISOString());
-      console.log('Final Days until reminder (calendar days):', daysUntilReminder);
-      console.log('Final Days until event (calendar days):', daysUntilEvent);
 
       return {
         _id: event._id,
@@ -101,19 +81,12 @@ router.get('/reminders', async (req, res) => {
         eventDate: nextOccurrence.toISOString(),
         reminderDate: reminderDate.toISOString(),
         daysUntilReminder, 
-        daysUntilEvent, // Add this field
+        daysUntilEvent,
         isRecurring: event.isRecurring
       };
-    }).filter(reminder => {
-      console.log('\nFiltering reminder for:', reminder.title);
-      // Keep if the *reminder* is today or in the future
-      console.log('Days until reminder:', reminder.daysUntilReminder);
-      const keep = reminder.daysUntilReminder >= 0;
-      console.log('Keep reminder?', keep);
-      return keep;
-    }).sort((a, b) => a.daysUntilReminder - b.daysUntilReminder); // Still sort by reminder date
+    }).filter(reminder => reminder.daysUntilReminder >= 0)
+      .sort((a, b) => a.daysUntilReminder - b.daysUntilReminder);
 
-    console.log('\nFinal reminders:', reminders);
     res.json(reminders);
   } catch (error: any) {
     console.error('Error in reminders endpoint:', error);
@@ -121,19 +94,23 @@ router.get('/reminders', async (req, res) => {
   }
 });
 
-// Get event stats
-router.get('/stats', async (req, res) => {
+// Get event stats for the user
+router.get('/stats', protect, async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const totalEvents = await SeasonalEvent.countDocuments();
+    const matchUser = { userId: req.user._id }; 
+    const totalEvents = await SeasonalEvent.countDocuments(matchUser);
     const now = new Date();
     const upcomingEvents = await SeasonalEvent.countDocuments({
+      ...matchUser,
       $or: [
-        { isRecurring: true }, // Always count recurring events
-        { isRecurring: false, date: { $gte: now } } // Count non-recurring only if upcoming
+        { isRecurring: true },
+        { isRecurring: false, date: { $gte: now } } 
       ]
     });
 
     const eventsByType = await SeasonalEvent.aggregate([
+      { $match: matchUser }, 
       {
         $group: {
           _id: '$type',
@@ -156,10 +133,14 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// Create new event
-router.post('/', async (req, res) => {
+// Create new event for the user
+router.post('/', protect, async (req: Request, res: Response) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const event = new SeasonalEvent(req.body);
+    const event = new SeasonalEvent({ 
+        ...req.body, 
+        userId: req.user._id 
+    });
     await event.validate();
     const savedEvent = await event.save();
     res.status(201).json(savedEvent);
@@ -172,18 +153,24 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update event
-router.put('/:id', async (req, res) => {
+// Update event (checking ownership)
+router.put('/:id', protect, async (req: Request, res: Response) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const event = await SeasonalEvent.findByIdAndUpdate(
+    const eventToUpdate = await SeasonalEvent.findById(req.params.id);
+    if (!eventToUpdate) {
+        return res.status(404).json({ message: 'Event not found' });
+    }
+    if (eventToUpdate.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'User not authorized' });
+    }
+
+    const updatedEvent = await SeasonalEvent.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
-    }
-    res.json(event);
+    res.json(updatedEvent);
   } catch (error: any) {
     if (error.name === 'ValidationError') {
       res.status(400).json({ message: 'Validation error', error: error.errors });
@@ -193,13 +180,19 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete event
-router.delete('/:id', async (req, res) => {
+// Delete event (checking ownership)
+router.delete('/:id', protect, async (req: Request, res: Response) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const event = await SeasonalEvent.findByIdAndDelete(req.params.id);
-    if (!event) {
+    const eventToDelete = await SeasonalEvent.findById(req.params.id);
+    if (!eventToDelete) {
       return res.status(404).json({ message: 'Event not found' });
     }
+    if (eventToDelete.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'User not authorized' });
+    }
+
+    await SeasonalEvent.findByIdAndDelete(req.params.id);
     res.json({ message: 'Event deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ message: 'Error deleting event', error: error.toString() });

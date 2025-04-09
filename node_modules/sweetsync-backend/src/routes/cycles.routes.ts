@@ -1,13 +1,15 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import Cycle from '../models/Cycle';
 import { addDays, differenceInDays } from 'date-fns';
+import { protect } from '../middleware/authMiddleware';
 
 const router = Router();
 
-// Get all cycles with stats
-router.get('/', async (req, res) => {
+// Get all cycles with stats for the user
+router.get('/', protect, async (req: Request, res: Response) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const cycles = await Cycle.find().sort({ startDate: -1 });
+    const cycles = await Cycle.find({ userId: req.user._id }).sort({ startDate: -1 });
     const stats = await calculateStats(cycles);
     res.json({ cycles, stats });
   } catch (error) {
@@ -15,10 +17,14 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Add new cycle
-router.post('/', async (req, res) => {
+// Add new cycle for the user
+router.post('/', protect, async (req: Request, res: Response) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const cycle = new Cycle(req.body);
+    const cycle = new Cycle({ 
+        ...req.body, 
+        userId: req.user._id 
+    });
     await cycle.save();
     res.status(201).json(cycle);
   } catch (error) {
@@ -26,31 +32,47 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update cycle
-router.put('/:id', async (req, res) => {
+// Update cycle (checking ownership)
+router.put('/:id', protect, async (req: Request, res: Response) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const cycle = await Cycle.findByIdAndUpdate(
+    const cycleToUpdate = await Cycle.findById(req.params.id);
+    if (!cycleToUpdate) {
+        return res.status(404).json({ message: 'Cycle not found' });
+    }
+    if (cycleToUpdate.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'User not authorized' });
+    }
+
+    const updatedCycle = await Cycle.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
-    if (!cycle) {
-      return res.status(404).json({ message: 'Cycle not found' });
-    }
     
-    const cycles = await Cycle.find().sort({ startDate: -1 });
-    const stats = await calculateStats(cycles);
-    res.json({ cycle, stats });
+    // Re-fetch cycles *for the current user* to recalculate stats
+    const userCycles = await Cycle.find({ userId: req.user._id }).sort({ startDate: -1 }); 
+    const stats = await calculateStats(userCycles);
+    res.json({ cycle: updatedCycle, stats }); // Send back updated cycle and new stats
   } catch (error) {
     res.status(400).json({ message: 'Error updating cycle' });
   }
 });
 
-// Delete cycle
-router.delete('/:id', async (req, res) => {
+// Delete cycle (checking ownership)
+router.delete('/:id', protect, async (req: Request, res: Response) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
+    const cycleToDelete = await Cycle.findById(req.params.id);
+    if (!cycleToDelete) {
+        return res.status(404).json({ message: 'Cycle not found' });
+    }
+    if (cycleToDelete.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'User not authorized' });
+    }
+
     await Cycle.findByIdAndDelete(req.params.id);
-    res.status(204).send();
+    res.status(204).send(); // Send 204 No Content on successful deletion
   } catch (error) {
     res.status(500).json({ message: 'Error deleting cycle' });
   }

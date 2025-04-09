@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
+// import axios from 'axios'; // Remove direct axios import
+import api from '../services/api'; // Import configured api instance
 import { format, parseISO, addDays } from 'date-fns';
 import RatingInput from '../components/RatingInput';
 
 interface FavoriteThing {
   _id: string;
   category: string;
-  title: string;
+  name: string;
   description: string;
   rating: number;
   dateAdded: string;
@@ -27,7 +28,7 @@ const FavoriteThings = () => {
   const [editingThing, setEditingThing] = useState<FavoriteThing | null>(null);
   const [newThing, setNewThing] = useState({
     category: '',
-    title: '',
+    name: '',
     description: '',
     rating: 5,
     isShared: true,
@@ -44,8 +45,8 @@ const FavoriteThings = () => {
 
   const fetchFavoriteThings = async () => {
     try {
-      // Always fetch all things, filtering/sorting happens on frontend
-      const response = await axios.get('http://localhost:3000/api/favorite-things');
+      // Use 'api' and relative path
+      const response = await api.get('/favorite-things');
       setFavoriteThings(response.data);
     } catch (err) {
       setError('Error fetching favorite things');
@@ -54,7 +55,8 @@ const FavoriteThings = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/favorite-things/stats');
+      // Use 'api' and relative path
+      const response = await api.get('/favorite-things/stats');
       setStats(response.data);
     } catch (err) {
       setError('Error fetching statistics');
@@ -80,8 +82,8 @@ const FavoriteThings = () => {
           // Secondary: Category (asc)
           comparison = a.category.localeCompare(b.category);
           if (comparison === 0) {
-            // Tertiary: Title (asc)
-            comparison = a.title.localeCompare(b.title);
+            // Tertiary: Name (asc)
+            comparison = a.name.localeCompare(b.name);
           }
         }
       } else { // sortKey === 'category'
@@ -95,8 +97,8 @@ const FavoriteThings = () => {
             comparison *= -1; // Make descending
           }
           if (comparison === 0) {
-            // Tertiary: Title (asc)
-            comparison = a.title.localeCompare(b.title);
+            // Tertiary: Name (asc)
+            comparison = a.name.localeCompare(b.name);
           }
         }
       }
@@ -121,7 +123,7 @@ const FavoriteThings = () => {
     setEditingThing(thing);
     setNewThing({
       category: thing.category,
-      title: thing.title,
+      name: thing.name,
       description: thing.description,
       rating: thing.rating,
       isShared: thing.isShared,
@@ -134,11 +136,12 @@ const FavoriteThings = () => {
     if (!editingThing) return;
 
     try {
-      await axios.put(`http://localhost:3000/api/favorite-things/${editingThing._id}`, newThing);
+      // Use 'api' and relative path
+      await api.put(`/favorite-things/${editingThing._id}`, newThing);
       setEditingThing(null);
       setNewThing({
         category: '',
-        title: '',
+        name: '',
         description: '',
         rating: 5,
         isShared: true,
@@ -157,10 +160,11 @@ const FavoriteThings = () => {
       if (editingThing) {
         await handleUpdate(e);
       } else {
-        await axios.post('http://localhost:3000/api/favorite-things', newThing);
+        // Use 'api' and relative path
+        await api.post('/favorite-things', newThing);
         setNewThing({
           category: '',
-          title: '',
+          name: '',
           description: '',
           rating: 5,
           isShared: true,
@@ -176,7 +180,8 @@ const FavoriteThings = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`http://localhost:3000/api/favorite-things/${id}`);
+      // Use 'api' and relative path
+      await api.delete(`/favorite-things/${id}`);
       fetchFavoriteThings();
       fetchStats();
     } catch (err) {
@@ -225,13 +230,13 @@ const FavoriteThings = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-gray-700 mb-2">Title</label>
+                <label className="block text-gray-700 mb-2">Name</label>
                 <input
                   type="text"
-                  value={newThing.title}
-                  onChange={(e) => setNewThing({ ...newThing, title: e.target.value })}
+                  value={newThing.name}
+                  onChange={(e) => setNewThing({ ...newThing, name: e.target.value })}
                   className="input w-full"
-                  placeholder="Add a title"
+                  placeholder="Add a name"
                   required
                 />
               </div>
@@ -289,7 +294,7 @@ const FavoriteThings = () => {
                   setEditingThing(null);
                   setNewThing({
                     category: '',
-                    title: '',
+                    name: '',
                     description: '',
                     rating: 5,
                     isShared: true,
@@ -361,7 +366,7 @@ const FavoriteThings = () => {
                       <div key={thing._id} className="card bg-white">
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="text-xl font-semibold text-primary-dark mb-0">{thing.title}</h3>
+                            <h3 className="text-xl font-semibold text-primary-dark mb-0">{thing.name}</h3>
                             <p className="text-sm text-gray-500">
                               Added on {format(addDays(parseISO(thing.dateAdded), 1), 'MMMM d, yyyy')}
                             </p>
@@ -413,7 +418,7 @@ const FavoriteThings = () => {
                       <div key={thing._id} className="card bg-white">
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="text-xl font-semibold text-primary-dark mb-0">{thing.title}</h3>
+                            <h3 className="text-xl font-semibold text-primary-dark mb-0">{thing.name}</h3>
                             <p className="text-sm text-gray-500">
                               Added on {format(addDays(parseISO(thing.dateAdded), 1), 'MMMM d, yyyy')}
                             </p>

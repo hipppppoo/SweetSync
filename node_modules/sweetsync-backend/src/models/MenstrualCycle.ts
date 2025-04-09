@@ -1,6 +1,16 @@
-import mongoose from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
-const menstrualCycleSchema = new mongoose.Schema({
+export interface IMenstrualCycle extends Document {
+  startDate: Date;
+  endDate: Date;
+  flow: string;
+  symptoms: string[];
+  mood: string;
+  notes?: string;
+  userId: mongoose.Schema.Types.ObjectId;
+}
+
+const menstrualCycleSchema: Schema = new Schema({
   startDate: {
     type: Date,
     required: true,
@@ -26,6 +36,11 @@ const menstrualCycleSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    ref: 'User'
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -34,13 +49,13 @@ const menstrualCycleSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-});
+}, { timestamps: true });
 
 menstrualCycleSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
 });
 
-const MenstrualCycle = mongoose.model('MenstrualCycle', menstrualCycleSchema);
+const MenstrualCycle = mongoose.model<IMenstrualCycle>('MenstrualCycle', menstrualCycleSchema);
 
 export default MenstrualCycle; 

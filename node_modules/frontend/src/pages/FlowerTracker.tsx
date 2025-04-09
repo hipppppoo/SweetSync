@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+// import axios from 'axios'; // Remove direct axios import
+import api from '../services/api'; // Import configured api instance
 import { format, parseISO, addDays, differenceInDays } from 'date-fns';
 
 interface FlowerGift {
@@ -66,8 +67,11 @@ const FlowerTracker = () => {
 
   const fetchFlowerGifts = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/flowers');
+      // Use 'api' and relative path
+      const response = await api.get('/flowers'); 
       setFlowerGifts(response.data);
+      // Call checkExpiringFlowers after data is fetched
+      checkExpiringFlowers(); 
     } catch (err) {
       setError('Error fetching flower gifts');
     }
@@ -75,7 +79,8 @@ const FlowerTracker = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/flowers/stats');
+      // Use 'api' and relative path
+      const response = await api.get('/flowers/stats');
       setStats(response.data);
     } catch (err) {
       setError('Error fetching statistics');
@@ -103,7 +108,8 @@ const FlowerTracker = () => {
     if (!editingGift) return;
 
     try {
-      await axios.put(`http://localhost:3000/api/flowers/${editingGift._id}`, newGift);
+      // Use 'api' and relative path
+      await api.put(`/flowers/${editingGift._id}`, newGift);
       setEditingGift(null);
       setIsAddingNew(false);
       setNewGift({
@@ -126,7 +132,8 @@ const FlowerTracker = () => {
     if (!flowerType) return;
     
     try {
-      const response = await axios.post('http://localhost:3000/api/flowers/estimate-expiry', {
+      // Use 'api' and relative path
+      const response = await api.post('/flowers/estimate-expiry', {
         flowerType,
         purchaseDate,
       });
@@ -158,9 +165,11 @@ const FlowerTracker = () => {
       console.log('Submitting flower gift with expiry:', giftWithExpiry);
 
       if (editingGift) {
-        await axios.put(`http://localhost:3000/api/flowers/${editingGift._id}`, giftWithExpiry);
+        // Use 'api' and relative path
+        await api.put(`/flowers/${editingGift._id}`, giftWithExpiry);
       } else {
-        await axios.post('http://localhost:3000/api/flowers', giftWithExpiry);
+        // Use 'api' and relative path
+        await api.post('/flowers', giftWithExpiry);
       }
       
       setNewGift({
@@ -198,7 +207,8 @@ const FlowerTracker = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`http://localhost:3000/api/flowers/${id}`);
+      // Use 'api' and relative path
+      await api.delete(`/flowers/${id}`);
       fetchFlowerGifts();
       fetchStats();
     } catch (err) {

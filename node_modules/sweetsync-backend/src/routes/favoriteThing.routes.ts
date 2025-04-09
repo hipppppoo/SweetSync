@@ -1,35 +1,45 @@
-import express, { RequestHandler } from 'express';
+import express, { RequestHandler, Request, Response } from 'express';
 import FavoriteThing from '../models/FavoriteThing';
+import { protect } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
-// Get all favorite things
+// Get all favorite things for the user
 const getAllFavoriteThings: RequestHandler = async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const favoriteThings = await FavoriteThing.find().sort({ dateAdded: -1 });
+    const favoriteThings = await FavoriteThing.find({ userId: req.user._id }).sort({ dateAdded: -1 });
     res.json(favoriteThings);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching favorite things', error });
   }
 };
 
-// Get favorite things by category
+// Get favorite things by category for the user
 const getFavoriteThingsByCategory: RequestHandler = async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
     const { category } = req.params;
-    const favoriteThings = await FavoriteThing.find({ category }).sort({ dateAdded: -1 });
+    const favoriteThings = await FavoriteThing.find({ 
+        category, 
+        userId: req.user._id 
+    }).sort({ dateAdded: -1 });
     res.json(favoriteThings);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching favorite things by category', error });
   }
 };
 
-// Get a single favorite thing
+// Get a single favorite thing (checking ownership)
 const getFavoriteThing: RequestHandler = async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
     const favoriteThing = await FavoriteThing.findById(req.params.id);
     if (!favoriteThing) {
       return res.status(404).json({ message: 'Favorite thing not found' });
+    }
+    if (favoriteThing.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'User not authorized' });
     }
     res.json(favoriteThing);
   } catch (error) {
@@ -37,10 +47,14 @@ const getFavoriteThing: RequestHandler = async (req, res) => {
   }
 };
 
-// Create a new favorite thing
+// Create a new favorite thing for the user
 const createFavoriteThing: RequestHandler = async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const favoriteThing = new FavoriteThing(req.body);
+    const favoriteThing = new FavoriteThing({ 
+        ...req.body, 
+        userId: req.user._id 
+    });
     const savedFavoriteThing = await favoriteThing.save();
     res.status(201).json(savedFavoriteThing);
   } catch (error) {
@@ -48,40 +62,56 @@ const createFavoriteThing: RequestHandler = async (req, res) => {
   }
 };
 
-// Update a favorite thing
+// Update a favorite thing (checking ownership)
 const updateFavoriteThing: RequestHandler = async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const favoriteThing = await FavoriteThing.findByIdAndUpdate(
+    const thingToUpdate = await FavoriteThing.findById(req.params.id);
+    if (!thingToUpdate) {
+        return res.status(404).json({ message: 'Favorite thing not found' });
+    }
+    if (thingToUpdate.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'User not authorized' });
+    }
+
+    const updatedFavoriteThing = await FavoriteThing.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true }
     );
-    if (!favoriteThing) {
-      return res.status(404).json({ message: 'Favorite thing not found' });
-    }
-    res.json(favoriteThing);
+    res.json(updatedFavoriteThing);
   } catch (error) {
     res.status(400).json({ message: 'Error updating favorite thing', error });
   }
 };
 
-// Delete a favorite thing
+// Delete a favorite thing (checking ownership)
 const deleteFavoriteThing: RequestHandler = async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const favoriteThing = await FavoriteThing.findByIdAndDelete(req.params.id);
-    if (!favoriteThing) {
+    const thingToDelete = await FavoriteThing.findById(req.params.id);
+    if (!thingToDelete) {
       return res.status(404).json({ message: 'Favorite thing not found' });
     }
+    if (thingToDelete.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'User not authorized' });
+    }
+
+    await FavoriteThing.findByIdAndDelete(req.params.id);
     res.json({ message: 'Favorite thing deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting favorite thing', error });
   }
 };
 
-// Get favorite things statistics
+// Get favorite things statistics for the user
 const getFavoriteThingsStats: RequestHandler = async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
     const stats = await FavoriteThing.aggregate([
+      {
+        $match: { userId: req.user._id } // Filter by user
+      },
       {
         $group: {
           _id: null,
@@ -122,12 +152,13 @@ const getFavoriteThingsStats: RequestHandler = async (req, res) => {
   }
 };
 
-router.get('/', getAllFavoriteThings);
-router.get('/stats', getFavoriteThingsStats);
-router.get('/category/:category', getFavoriteThingsByCategory);
-router.get('/:id', getFavoriteThing);
-router.post('/', createFavoriteThing);
-router.put('/:id', updateFavoriteThing);
-router.delete('/:id', deleteFavoriteThing);
+// --- Routes --- (Middleware already applied)
+router.get('/', protect, getAllFavoriteThings);
+router.get('/stats', protect, getFavoriteThingsStats);
+router.get('/category/:category', protect, getFavoriteThingsByCategory);
+router.get('/:id', protect, getFavoriteThing);
+router.post('/', protect, createFavoriteThing);
+router.put('/:id', protect, updateFavoriteThing);
+router.delete('/:id', protect, deleteFavoriteThing);
 
 export default router; 

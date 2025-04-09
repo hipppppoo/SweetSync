@@ -1,9 +1,23 @@
-import mongoose from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
-const dateNightSchema = new mongoose.Schema({
+export interface IDateNight extends Document {
+  title: string;
+  date: Date;
+  location?: string;
+  description?: string;
+  activity?: string;
+  cost?: number;
+  rating?: number;
+  photos?: string[];
+  mood?: string;
+  userId: mongoose.Schema.Types.ObjectId;
+}
+
+const DateNightSchema: Schema = new Schema({
   title: {
     type: String,
     required: true,
+    trim: true,
   },
   date: {
     type: Date,
@@ -12,40 +26,45 @@ const dateNightSchema = new mongoose.Schema({
   },
   location: {
     type: String,
-    required: true,
+    trim: true,
+  },
+  description: {
+    type: String,
+    trim: true,
+  },
+  activity: {
+    type: String,
+    trim: true,
   },
   cost: {
     type: Number,
-    default: 0,
+    min: 0,
   },
   rating: {
     type: Number,
     min: 1,
-    max: 10,
-    default: 5,
+    max: 5,
   },
-  photos: [{
-    type: String, // URLs to photos
-  }],
-  notes: {
+  photos: {
+    type: [String],
+    default: [],
+  },
+  mood: {
     type: String,
-    default: '',
+    trim: true,
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    ref: 'User'
+  }
+}, { timestamps: true });
 
-dateNightSchema.pre('save', function(next) {
+DateNightSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
 });
 
-const DateNight = mongoose.model('DateNight', dateNightSchema);
+const DateNight = mongoose.model<IDateNight>('DateNight', DateNightSchema);
 
 export default DateNight; 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+// import axios from 'axios'; // Remove direct axios import
+import api from '../services/api'; // Import configured api instance
 import { format, parseISO, addDays } from 'date-fns';
 import RatingInput from '../components/RatingInput';
 
@@ -58,7 +59,8 @@ const DateNights = () => {
 
   const fetchDateNights = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/date-nights');
+      // Use 'api' and relative path
+      const response = await api.get('/date-nights');
       setDateNights(response.data);
     } catch (err) {
       setError('Error fetching date nights');
@@ -67,7 +69,8 @@ const DateNights = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/date-nights/stats');
+      // Use 'api' and relative path
+      const response = await api.get('/date-nights/stats');
       setStats(response.data);
     } catch (err) {
       setError('Error fetching statistics');
@@ -95,7 +98,8 @@ const DateNights = () => {
         ...newDate,
         date: formatDateForAPI(newDate.date),
       };
-      await axios.put(`http://localhost:3000/api/date-nights/${editingDate?._id}`, dateData);
+      // Use 'api' and relative path
+      await api.put(`/date-nights/${editingDate?._id}`, dateData);
       setNewDate({
         title: '',
         date: format(new Date(), 'yyyy-MM-dd'),
@@ -124,7 +128,8 @@ const DateNights = () => {
         ...newDate,
         date: formatDateForAPI(newDate.date),
       };
-      await axios.post('http://localhost:3000/api/date-nights', dateData);
+      // Use 'api' and relative path
+      await api.post('/date-nights', dateData);
       setNewDate({
         title: '',
         date: format(new Date(), 'yyyy-MM-dd'),
@@ -144,7 +149,8 @@ const DateNights = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`http://localhost:3000/api/date-nights/${id}`);
+      // Use 'api' and relative path
+      await api.delete(`/date-nights/${id}`);
       fetchDateNights();
       fetchStats();
     } catch (err) {

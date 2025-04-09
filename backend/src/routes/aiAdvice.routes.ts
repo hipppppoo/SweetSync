@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { protect } from '../middleware/authMiddleware'; // Import protect middleware
 
 // Ensure environment variables are loaded
 dotenv.config();
@@ -16,7 +17,8 @@ console.log('Available environment variables:', Object.keys(process.env));
 console.log('GROQ_API_KEY exists:', !!process.env.GROQ_API_KEY);
 
 // Get AI relationship advice
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', protect, async (req: Request, res: Response) => {
+  // No user-specific data needed for the query itself, but access requires login
   try {
     const { message } = req.body;
     console.log('Received message:', message);

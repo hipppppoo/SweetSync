@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { format, parseISO, addDays } from 'date-fns';
 import RatingInput from '../components/RatingInput';
 import {
@@ -71,7 +71,7 @@ const MoodTracker = () => {
 
   const fetchMoodEntries = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/moods');
+      const response = await api.get('/moods');
       setMoodEntries(response.data);
       setError('');
     } catch (err) {
@@ -83,7 +83,7 @@ const MoodTracker = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/moods/stats');
+      const response = await api.get('/moods/stats');
       console.log('Received stats from backend:', response.data);
       setStats(response.data);
       setError('');
@@ -130,9 +130,9 @@ const MoodTracker = () => {
 
     try {
       const updateData = {
-        ...newEntry,
         date: format(parseISO(newEntry.date), 'yyyy-MM-dd'),
         energy: Number(newEntry.energy) || 5,
+        notes: newEntry.notes,
         sleepHours: Number(newEntry.sleepHours) || 8,
         sleepQuality: Number(newEntry.sleepQuality) || 5,
         stressLevel: Number(newEntry.stressLevel) || 5,
@@ -140,7 +140,7 @@ const MoodTracker = () => {
         happinessLevel: Number(newEntry.happinessLevel) || 5,
       };
 
-      await axios.put(`http://localhost:3000/api/moods/${editingEntry._id}`, updateData);
+      await api.put(`/moods/${editingEntry._id}`, updateData);
       setEditingEntry(null);
       setIsAddingNew(false);
       resetForm(true);
@@ -158,9 +158,9 @@ const MoodTracker = () => {
         await handleUpdate(e);
       } else {
         const submissionData = {
-          ...newEntry,
           date: new Date(newEntry.date).toISOString(),
           energy: Number(newEntry.energy) || 5,
+          notes: newEntry.notes,
           sleepHours: Number(newEntry.sleepHours) || 8,
           sleepQuality: Number(newEntry.sleepQuality) || 5,
           stressLevel: Number(newEntry.stressLevel) || 5,
@@ -173,7 +173,7 @@ const MoodTracker = () => {
         console.log('2. Processed submission data:', JSON.stringify(submissionData, null, 2));
         
         try {
-          const response = await axios.post('http://localhost:3000/api/moods', submissionData);
+          const response = await api.post('/moods', submissionData);
           console.log('3. Success Response:', {
             status: response.status,
             data: response.data
@@ -193,9 +193,9 @@ const MoodTracker = () => {
           throw axiosError;
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('=== Error Details ===');
-      if (axios.isAxiosError(err)) {
+      if (err.isAxiosError) {
         console.error('1. Error type: Axios Error');
         console.error('2. Status:', err.response?.status);
         console.error('3. Response data:', JSON.stringify(err.response?.data, null, 2));
@@ -216,7 +216,7 @@ const MoodTracker = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`http://localhost:3000/api/moods/${id}`);
+      await api.delete(`/moods/${id}`);
       fetchMoodEntries();
       fetchStats();
     } catch (err) {
@@ -225,20 +225,45 @@ const MoodTracker = () => {
   };
 
   // Prepare data for the chart using useMemo
-  const chartData = useMemo(() => {
-    return [...moodEntries]
-      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()) // Sort by date ascending
+  const { chartData, yAxisMax, yAxisTicks } = useMemo(() => {
+    const processedData = [...moodEntries]
+      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())
       .map(entry => ({
-        // Format date for display on the X axis
         date: format(parseISO(entry.date), 'MM/dd'),
-        // Ensure all values are numbers, defaulting if necessary
-        Happiness: entry.happinessLevel || 5,
-        Energy: entry.energy || 5,
-        Stress: entry.stressLevel || 5,
-        Health: entry.physicalHealth || 5,
-        SleepQuality: entry.sleepQuality || 5,
-        // SleepHours: entry.sleepHours || 8, // Optionally include sleep hours
+        Happiness: entry.happinessLevel ?? 5,
+        Energy: entry.energy ?? 5,
+        Stress: entry.stressLevel ?? 5,
+        Health: entry.physicalHealth ?? 5,
+        SleepQuality: entry.sleepQuality ?? 5,
+        SleepHours: entry.sleepHours ?? 8, // Include SleepHours
       }));
+
+    // Calculate max Y value needed, ensuring it's at least 10
+    let calculatedMax = 10;
+    if (processedData.length > 0) {
+      calculatedMax = processedData.reduce((max, entry) => {
+        return Math.max(
+          max,
+          entry.Happiness,
+          entry.Energy,
+          entry.Stress,
+          entry.Health,
+          entry.SleepQuality,
+          entry.SleepHours
+        );
+      }, 10); // Start with 10 as minimum max
+    }
+
+    // Calculate preliminary limit with +2 buffer
+    const prelimLimit = Math.ceil(calculatedMax) + 2;
+    // Ensure the final limit is an even number
+    const yAxisLimit = prelimLimit % 2 !== 0 ? prelimLimit + 1 : prelimLimit;
+
+    // Generate ticks from 0 to the final even limit, FILTERING FOR EVEN NUMBERS
+    const ticks = Array.from({ length: yAxisLimit + 1 }, (_, i) => i)
+                       .filter(tick => tick % 2 === 0);
+
+    return { chartData: processedData, yAxisMax: yAxisLimit, yAxisTicks: ticks };
   }, [moodEntries]);
 
   if (isLoading) {
@@ -326,7 +351,12 @@ const MoodTracker = () => {
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
               <XAxis dataKey="date" stroke="#4a4a4a" />
-              <YAxis domain={[0, 10]} tickCount={11} stroke="#4a4a4a" />
+              <YAxis 
+                domain={[0, yAxisMax]} 
+                ticks={yAxisTicks}
+                allowDataOverflow={true}
+                stroke="#4a4a4a" 
+              />
               <Tooltip
                 contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #cccccc' }} 
                 labelStyle={{ color: '#333333' }} 
@@ -380,6 +410,15 @@ const MoodTracker = () => {
                 activeDot={{ r: 6 }} 
                 name="Sleep Quality"
                 strokeOpacity={hoveredLineKey === null || hoveredLineKey === 'SleepQuality' ? 1 : 0}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="SleepHours"
+                stroke="#ff7300"
+                strokeWidth={2} 
+                activeDot={{ r: 6 }} 
+                name="Sleep Hours"
+                strokeOpacity={hoveredLineKey === null || hoveredLineKey === 'SleepHours' ? 1 : 0}
               />
             </LineChart>
           </ResponsiveContainer>

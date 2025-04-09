@@ -1,11 +1,11 @@
 import dotenv from 'dotenv';
+// Load environment variables FIRST
+dotenv.config();
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import routes from './routes';
-
-// Load environment variables
-dotenv.config();
 
 const app = express();
 

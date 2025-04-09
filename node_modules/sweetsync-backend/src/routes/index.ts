@@ -10,8 +10,13 @@ import seasonalEventRoutes from './seasonalEvent.routes';
 import aiAdviceRoutes from './aiAdvice.routes';
 import chatHistoryRoutes from './chatHistory.routes';
 import cyclesRoutes from './cycles.routes';
+import authRoutes from './authRoutes';
+import userRoutes from './userRoutes';
 
 const router = express.Router();
+
+// Authentication Routes
+router.use('/auth', authRoutes);
 
 // --- Log before mounting anniversary routes ---
 console.log("Mounting /anniversaries routes...");
@@ -27,5 +32,8 @@ router.use('/seasonal-events', seasonalEventRoutes);
 router.use('/ai-advice', aiAdviceRoutes);
 router.use('/chat-history', chatHistoryRoutes);
 router.use('/cycles', cyclesRoutes);
+
+// User Routes (Profile, Settings, etc.)
+router.use('/users', userRoutes);
 
 export default router; 

@@ -1,24 +1,30 @@
 import express, { Request, Response, Router } from 'express';
 import MenstrualCycle from '../models/MenstrualCycle';
+import { protect } from '../middleware/authMiddleware';
 
 const router: Router = express.Router();
 
-// Get all cycles
-router.get('/', async (req: Request, res: Response) => {
+// Get all cycles for the user
+router.get('/', protect, async (req: Request, res: Response) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const cycles = await MenstrualCycle.find().sort({ startDate: -1 });
+    const cycles = await MenstrualCycle.find({ userId: req.user._id }).sort({ startDate: -1 });
     res.json(cycles);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching cycles', error });
   }
 });
 
-// Get a single cycle
-router.get('/:id', async (req: Request, res: Response) => {
+// Get a single cycle (checking ownership)
+router.get('/:id', protect, async (req: Request, res: Response) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
     const cycle = await MenstrualCycle.findById(req.params.id);
     if (!cycle) {
       return res.status(404).json({ message: 'Cycle not found' });
+    }
+    if (cycle.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'User not authorized' });
     }
     res.json(cycle);
   } catch (error) {
@@ -26,10 +32,14 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Create a new cycle
-router.post('/', async (req: Request, res: Response) => {
+// Create a new cycle for the user
+router.post('/', protect, async (req: Request, res: Response) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const cycle = new MenstrualCycle(req.body);
+    const cycle = new MenstrualCycle({ 
+        ...req.body, 
+        userId: req.user._id 
+    });
     const savedCycle = await cycle.save();
     res.status(201).json(savedCycle);
   } catch (error) {
@@ -37,40 +47,53 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// Update a cycle
-router.put('/:id', async (req: Request, res: Response) => {
+// Update a cycle (checking ownership)
+router.put('/:id', protect, async (req: Request, res: Response) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const cycle = await MenstrualCycle.findByIdAndUpdate(
+    const cycleToUpdate = await MenstrualCycle.findById(req.params.id);
+    if (!cycleToUpdate) {
+        return res.status(404).json({ message: 'Cycle not found' });
+    }
+    if (cycleToUpdate.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'User not authorized' });
+    }
+
+    const updatedCycle = await MenstrualCycle.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true }
     );
-    if (!cycle) {
-      return res.status(404).json({ message: 'Cycle not found' });
-    }
-    res.json(cycle);
+    res.json(updatedCycle); // No need for 404 check again as findByIdAndUpdate returns null if not found initially
   } catch (error) {
     res.status(400).json({ message: 'Error updating cycle', error });
   }
 });
 
-// Delete a cycle
-router.delete('/:id', async (req: Request, res: Response) => {
+// Delete a cycle (checking ownership)
+router.delete('/:id', protect, async (req: Request, res: Response) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const cycle = await MenstrualCycle.findByIdAndDelete(req.params.id);
-    if (!cycle) {
+    const cycleToDelete = await MenstrualCycle.findById(req.params.id);
+    if (!cycleToDelete) {
       return res.status(404).json({ message: 'Cycle not found' });
     }
+    if (cycleToDelete.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'User not authorized' });
+    }
+
+    await MenstrualCycle.findByIdAndDelete(req.params.id);
     res.json({ message: 'Cycle deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting cycle', error });
   }
 });
 
-// Get cycle predictions
-router.get('/predictions/next', async (req: Request, res: Response) => {
+// Get cycle predictions for the user
+router.get('/predictions/next', protect, async (req: Request, res: Response) => {
+  if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
   try {
-    const cycles = await MenstrualCycle.find()
+    const cycles = await MenstrualCycle.find({ userId: req.user._id })
       .sort({ startDate: -1 })
       .limit(3);
 
@@ -112,7 +135,7 @@ router.get('/predictions/next', async (req: Request, res: Response) => {
   }
 });
 
-// Helper function to calculate prediction confidence
+// Helper function (doesn't need protection or user context)
 function calculateConfidence(cycleLengths: number[]): number {
   if (cycleLengths.length < 2) return 0;
 
