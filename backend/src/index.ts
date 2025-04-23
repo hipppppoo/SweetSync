@@ -1,3 +1,7 @@
+import dotenv from 'dotenv';
+// Load environment variables FIRST
+dotenv.config();
+
 // --- Vercel Startup Debug Logging ---
 console.log(`[VERCEL STARTUP] NODE_ENV: ${process.env.NODE_ENV}`);
 console.log(`[VERCEL STARTUP] MONGODB_URI set: ${!!process.env.MONGODB_URI}`); // Log if URI is set, not the URI itself for security
