@@ -10,7 +10,7 @@ console.log(`[VERCEL STARTUP] JWT_SECRET set: ${!!process.env.JWT_SECRET}`); // 
 
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import mongoose from 'mongoose';
+// import mongoose from 'mongoose'; // Temporarily commented out - not used in simplified version
 // import routes from './routes'; // Temporarily commented out
 
 const app = express();
