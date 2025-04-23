@@ -1,10 +1,10 @@
 import express, { Request, Response } from 'express';
 import axios from 'axios';
-import dotenv from 'dotenv';
+// import dotenv from 'dotenv'; // Removed redundant dotenv
 import { protect } from '../middleware/authMiddleware'; // Import protect middleware
 
 // Ensure environment variables are loaded
-dotenv.config();
+// dotenv.config(); // Removed redundant dotenv call
 
 const router = express.Router();
 

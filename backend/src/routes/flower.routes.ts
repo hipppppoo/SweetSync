@@ -1,11 +1,11 @@
 import express, { Request, Response, Router } from 'express';
 import axios from 'axios';
-import dotenv from 'dotenv';
+// import dotenv from 'dotenv'; // Removed redundant dotenv
 import FlowerGift from '../models/FlowerGift';
 import { protect } from '../middleware/authMiddleware';
 
 // Ensure environment variables are loaded
-dotenv.config();
+// dotenv.config(); // Removed redundant dotenv call
 
 const router: Router = express.Router();
 
