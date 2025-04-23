@@ -2,7 +2,7 @@
   "name": "sweetsync-backend",
   "version": "1.0.0",
   "description": "Backend server for SweetSync relationship management app",
-  "main": "dist/index.js",
+  "main": "dist/api.js",
   "scripts": {
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
