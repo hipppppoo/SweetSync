@@ -13,12 +13,6 @@
       }
     }
   ],
-  "functions": {
-    "backend/dist/api.js": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/backend/dist/api.js" },
     { "source": "/(.*)", "destination": "/frontend/dist/index.html" }
