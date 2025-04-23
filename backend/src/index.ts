@@ -65,5 +65,6 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// Export the Express app for Vercel (needs to be top-level)
-export default app; 
+// Export the Express app for Vercel using CommonJS syntax
+// export default app; // Using ES Module export
+module.exports = app; // Using CommonJS export 
