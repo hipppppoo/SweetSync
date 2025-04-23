@@ -103,10 +103,15 @@ router.post('/', async (req, res) => {
     const savedEvent = await event.save();
     res.status(201).json(savedEvent);
   } catch (error) {
-    if (error.name === 'ValidationError') {
-      res.status(400).json({ message: 'Validation error', error: error.errors });
+    // Handle potential errors, checking for validation errors specifically
+    if (error && typeof error === 'object' && 'name' in error && error.name === 'ValidationError' && 'errors' in error) {
+      res.status(400).json({ message: 'Validation error', detail: error.errors });
+    } else if (error instanceof Error) {
+      console.error("Error creating event:", error.message);
+      res.status(500).json({ message: `Error creating event: ${error.message}` });
     } else {
-      res.status(500).json({ message: 'Error creating event', error });
+      console.error("Unknown error creating event:", error);
+      res.status(500).json({ message: 'An unknown error occurred while creating the event' });
     }
   }
 });
@@ -124,10 +129,15 @@ router.put('/:id', async (req, res) => {
     }
     res.json(event);
   } catch (error) {
-    if (error.name === 'ValidationError') {
-      res.status(400).json({ message: 'Validation error', error: error.errors });
+    // Handle potential errors, checking for validation errors specifically
+    if (error && typeof error === 'object' && 'name' in error && error.name === 'ValidationError' && 'errors' in error) {
+        res.status(400).json({ message: 'Validation error', detail: error.errors });
+    } else if (error instanceof Error) {
+        console.error("Error updating event:", error.message);
+        res.status(500).json({ message: `Error updating event: ${error.message}` });
     } else {
-      res.status(500).json({ message: 'Error updating event', error });
+        console.error("Unknown error updating event:", error);
+        res.status(500).json({ message: 'An unknown error occurred while updating the event' });
     }
   }
 });
