@@ -11,7 +11,7 @@ console.log(`[VERCEL STARTUP] JWT_SECRET set: ${!!process.env.JWT_SECRET}`); // 
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import routes from './routes';
+// import routes from './routes'; // Temporarily commented out
 
 const app = express();
 
@@ -27,7 +27,13 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use('/api', routes);
+// app.use('/api', routes); // Temporarily commented out
+
+// Add a simple test route
+app.get('/api/test', (req: Request, res: Response) => {
+  console.log('Reached /api/test route handler');
+  res.status(200).send('Backend index test route reached successfully!');
+});
 
 // --- Add Central Error Handler ---
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
@@ -39,19 +45,17 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 });
 // -------------------------------
 
-// MongoDB connection wrapped in async function with try/catch
-const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/gfwebsite');
-    console.log('[VERCEL DB] MongoDB Connected successfully.');
-  } catch (error: any) {
-    console.error('[VERCEL DB ERROR] MongoDB connection error:', error.message);
-    // Optionally re-throw or exit if connection is critical for startup
-    // process.exit(1); // Consider if the app absolutely cannot run without DB
-  }
-};
-
-connectDB(); // Call the async function to connect
+// --- DB Connection Temporarily Commented Out ---
+// const connectDB = async () => {
+//   try {
+//     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/gfwebsite');
+//     console.log('[VERCEL DB] MongoDB Connected successfully.');
+//   } catch (error: any) {
+//     console.error('[VERCEL DB ERROR] MongoDB connection error:', error.message);
+//   }
+// };
+// connectDB(); 
+// -------------------------------------------
 
 // Conditionally start the server only if not in production (e.g., Vercel)
 if (process.env.NODE_ENV !== 'production') {
