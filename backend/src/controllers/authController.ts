@@ -2,20 +2,22 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import User, { IUser } from '../models/User'; // Import the User model and IUser interface
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET) {
-  console.error("FATAL ERROR: JWT_SECRET is not defined in .env file.");
-  process.exit(1); // Exit if JWT secret is missing
-}
-
 // Function to generate JWT
 const generateToken = (userId: string) => {
+  const secret = process.env.JWT_SECRET;
+  // Check for secret *inside* the function when it's needed
+  if (!secret) {
+    console.error('[TOKEN GENERATION ERROR] JWT_SECRET is not defined when generating token.');
+    // Throw an error to be caught by the calling function (login/signup)
+    throw new Error('Server configuration error: JWT secret not set.');
+  }
+
   // Ensure userId is a string before signing
   if (typeof userId !== 'string') {
     throw new Error('User ID must be a string for JWT generation');
   }
-  return jwt.sign({ id: userId }, JWT_SECRET!, {
+  // Use the locally checked 'secret' variable
+  return jwt.sign({ id: userId }, secret, {
     expiresIn: '30d', // Token expires in 30 days
   });
 };
